@@ -70,6 +70,7 @@ class _Settings(_Base):
     mail_gmail_token = Column(JSON, default={})
 
     config_calibre_dir = Column(String)
+    config_calibre_download_dir = Column(String)
     config_calibre_uuid = Column(String)
     config_calibre_split = Column(Boolean, default=False)
     config_calibre_split_dir = Column(String)
@@ -209,6 +210,7 @@ class ConfigSQL(object):
         self._settings = None
         self.db_configured = None
         self.config_calibre_dir = None
+        self.config_calibre_download_dir = None
         self._fernet = Fernet(secret_key)
         self.cli = cli
         self.load()
@@ -235,7 +237,7 @@ class ConfigSQL(object):
             log.debug("_ConfigSQL._read_from_storage")
             self._settings = self._session.query(_Settings).first()
         return self._settings
-
+    
     def get_config_certfile(self):
         if self.cli.certfilepath:
             return self.cli.certfilepath
@@ -285,10 +287,22 @@ class ConfigSQL(object):
 
     def show_detail_random(self):
         return self.show_element_new_user(constants.DETAIL_RANDOM)
+    
+    def update_download_dir(self, dir):
+        try:
+            session = self._session
+            settings_record = session.query(_Settings).first()  # Assuming one record, adjust as needed
+            print(settings_record)
+            # Update the column values
+            print(settings_record.config_calibre_download_dir)
+            settings_record.config_calibre_download_dir = dir  # Update the new column
 
-    def list_denied_tags(self):
-        mct = self.config_denied_tags or ""
-        return [t.strip() for t in mct.split(",")]
+            # Commit the changes
+            session.commit()
+
+        except Exception as e:
+            self._session.rollback()
+            print(f"Error: {e}")
 
     def list_allowed_tags(self):
         mct = self.config_allowed_tags or ""
@@ -597,3 +611,4 @@ def get_encryption_key(key_path):
         except PermissionError as e:
             error = e
     return key, error
+

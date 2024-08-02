@@ -38,6 +38,7 @@ def main():
     from .editbooks import editbook
     from .about import about
     from .search import search
+    from .plugins.calibre_web_downloader.download import download
     from .search_metadata import meta
     from .shelf import shelf
     from .tasks_status import tasks
@@ -62,6 +63,7 @@ def main():
     init_errorhandler()
 
     app.register_blueprint(search)
+    app.register_blueprint(download)
     app.register_blueprint(tasks)
     app.register_blueprint(web)
     app.register_blueprint(opds)
