@@ -2,6 +2,7 @@ import os
 import re
 import sys
 import json
+from packaging.requirements import Requirement
 
 from .constants import BASE_DIR
 try:
@@ -22,37 +23,25 @@ if not importlib:
 
 
 def load_dependencies(optional=False):
-    deps = list()
-    if getattr(sys, 'frozen', False):
-        pip_installed = os.path.join(BASE_DIR, ".pip_installed")
-        if os.path.exists(pip_installed):
-            with open(pip_installed) as f:
-                exe_deps = json.loads("".join(f.readlines()))
-        else:
-            return deps
-    if importlib or pkgresources:
-        if optional:
-            req_path = os.path.join(BASE_DIR, "optional-requirements.txt")
-        else:
-            req_path = os.path.join(BASE_DIR, "requirements.txt")
-        if os.path.exists(req_path):
-            with open(req_path, 'r') as f:
-                for line in f:
-                    if not line.startswith('#') and not line == '\n' and not line.startswith('git'):
-                        res = re.match(r'(.*?)([<=>\s]+)([\d\.]+),?\s?([<=>\s]+)?([\d\.]+)?', line.strip())
-                        try:
-                            if getattr(sys, 'frozen', False):
-                                dep_version = exe_deps[res.group(1).lower().replace('_', '-')]
-                            else:
-                                if importlib:
-                                    dep_version = version(res.group(1))
-                                else:
-                                    dep_version = pkg_resources.get_distribution(res.group(1)).version
-                        except (ImportNotFound, KeyError):
-                            if optional:
-                                continue
-                            dep_version = "not installed"
-                        deps.append([dep_version, res.group(1), res.group(2), res.group(3), res.group(4), res.group(5)])
+    deps = []
+    if optional:
+        dep_file = os.path.join(BASE_DIR, 'optional-requirements.txt')
+    else:
+        dep_file = os.path.join(BASE_DIR, 'requirements.txt')
+    with open(dep_file, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#'):
+                try:
+                    req = Requirement(line)
+                    # Extract relevant information from req object
+                    name = req.name
+                    specifier = str(req.specifier) if req.specifier else None
+                    url = req.url
+                    extras = ','.join(req.extras) if req.extras else None
+                    deps.append([name, specifier, url, extras])
+                except Exception as e:
+                    print(f"Warning: Unable to parse requirement '{line}': {e}")
     return deps
 
 
