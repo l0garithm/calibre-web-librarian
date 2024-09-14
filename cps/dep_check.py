@@ -2,7 +2,6 @@ import os
 import re
 import sys
 import json
-from packaging.requirements import Requirement
 
 from .constants import BASE_DIR
 try:
@@ -23,64 +22,108 @@ if not importlib:
 
 
 def load_dependencies(optional=False):
-    deps = []
-    if optional:
-        dep_file = os.path.join(BASE_DIR, 'optional-requirements.txt')
-    else:
-        dep_file = os.path.join(BASE_DIR, 'requirements.txt')
-    with open(dep_file, 'r') as f:
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith('#'):
-                try:
-                    req = Requirement(line)
-                    # Extract relevant information from req object
-                    name = req.name
-                    specifier = str(req.specifier) if req.specifier else None
-                    url = req.url
-                    extras = ','.join(req.extras) if req.extras else None
-                    deps.append([name, specifier, url, extras])
-                except Exception as e:
-                    print(f"Warning: Unable to parse requirement '{line}': {e}")
+    deps = list()
+    if getattr(sys, 'frozen', False):
+        pip_installed = os.path.join(BASE_DIR, ".pip_installed")
+        if os.path.exists(pip_installed):
+            with open(pip_installed) as f:
+                exe_deps = json.loads("".join(f.readlines()))
+        else:
+            return deps
+    if importlib or pkgresources:
+        if optional:
+            req_path = os.path.join(BASE_DIR, "optional-requirements.txt")
+        else:
+            req_path = os.path.join(BASE_DIR, "requirements.txt")
+        if os.path.exists(req_path):
+            with open(req_path, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line.startswith('#') and line != '':
+                        if '@' in line:  # Handle git-based requirements
+                            package_name = line.split('@')[0].strip()
+                            dep_version = "git-based"
+                            deps.append([dep_version, package_name, "==", "git", None, None])
+                        elif not line.startswith('git'):
+                            res = re.match(r'(.*?)([<=>\s]+)([\d\.]+),?\s?([<=>\s]+)?([\d\.]+)?', line)
+                            if res:
+                                try:
+                                    if getattr(sys, 'frozen', False):
+                                        dep_version = exe_deps[res.group(1).lower().replace('_', '-')]
+
+                                    else:
+                                        if importlib:
+                                            dep_version = version(res.group(1))
+                                        else:
+                                            dep_version = pkg_resources.get_distribution(res.group(1)).version
+                                except (ImportNotFound, KeyError):
+                                    if optional:
+                                        continue
+                                    dep_version = "not installed"
+                                deps.append([dep_version, res.group(1), res.group(2), res.group(3), res.group(4), res.group(5)])
+                            else:
+                                print(f"Warning: Unable to parse requirement: {line}")
     return deps
 
 
-from importlib.metadata import version, PackageNotFoundError
-
-def get_installed_version(package_name):
-    try:
-        return version(package_name)
-    except PackageNotFoundError:
-        return "Not installed"
-
 def dependency_check(optional=False):
-    d = []
+    d = list()
+    dep_version_int = None
+    low_check = None
     deps = load_dependencies(optional)
     for dep in deps:
-        name, specifier, url, extras = dep
+        if dep[2] == "==":
+            if dep[3] == "git":
+                # Handle git-based dependencies
+                d.append({'name': dep[1],
+                          'found': "git-based",
+                          'target': "git repository"})
+                continue
         
-        if url:
-            d.append({
-                'name': name,
-                'target': "from URL",
-                'found': "URL-based dependency"
-            })
+        try:
+            dep_version_int = [int(x) if x.isnumeric() else 0 for x in dep[0].split('.')]
+            low_check = [int(x) for x in dep[3].split('.')]
+            high_check = [int(x) for x in dep[5].split('.')] if dep[5] else []
+        except AttributeError:
+            high_check = []
+        except ValueError:
+            d.append({'name': dep[1],
+                      'target': "available",
+                      'found': "Not available"
+                      })
             continue
-        
-        installed_version = get_installed_version(name)
-        
-        if not specifier:
-            d.append({
-                'name': name,
-                'target': "any",
-                'found': installed_version
-            })
-            continue
-        
-        d.append({
-            'name': name,
-            'target': specifier,
-            'found': installed_version
-        })
-    
+
+        if dep[2].strip() == "==":
+            if dep_version_int != low_check:
+                d.append({'name': dep[1],
+                          'found': dep[0],
+                          "target": dep[2] + dep[3]})
+                continue
+        elif dep[2].strip() == ">=":
+            if dep_version_int < low_check:
+                d.append({'name': dep[1],
+                          'found': dep[0],
+                          "target": dep[2] + dep[3]})
+                continue
+        elif dep[2].strip() == ">":
+            if dep_version_int <= low_check:
+                d.append({'name': dep[1],
+                          'found': dep[0],
+                          "target": dep[2] + dep[3]})
+                continue
+        if dep[4] and dep[5]:
+            if dep[4].strip() == "<":
+                if dep_version_int >= high_check:
+                    d.append(
+                        {'name': dep[1],
+                         'found': dep[0],
+                         "target": dep[4] + dep[5]})
+                    continue
+            elif dep[4].strip() == "<=":
+                if dep_version_int > high_check:
+                    d.append(
+                        {'name': dep[1],
+                         'found': dep[0],
+                         "target": dep[4] + dep[5]})
+                    continue
     return d
