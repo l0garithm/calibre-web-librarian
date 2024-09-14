@@ -45,56 +45,42 @@ def load_dependencies(optional=False):
     return deps
 
 
+from importlib.metadata import version, PackageNotFoundError
+
+def get_installed_version(package_name):
+    try:
+        return version(package_name)
+    except PackageNotFoundError:
+        return "Not installed"
+
 def dependency_check(optional=False):
-    d = list()
-    dep_version_int = None
-    low_check = None
+    d = []
     deps = load_dependencies(optional)
     for dep in deps:
-        try:
-            dep_version_int = [int(x) if x.isnumeric() else 0 for x in dep[0].split('.')]
-            low_check = [int(x) for x in dep[3].split('.')]
-            high_check = [int(x) for x in dep[5].split('.')]
-        except AttributeError:
-            high_check = []
-        except ValueError:
-            d.append({'name': dep[1],
-                      'target': "available",
-                      'found': "Not available"
-                      })
+        name, specifier, url, extras = dep
+        
+        if url:
+            d.append({
+                'name': name,
+                'target': "from URL",
+                'found': "URL-based dependency"
+            })
             continue
-
-        if dep[2].strip() == "==":
-            if dep_version_int != low_check:
-                d.append({'name': dep[1],
-                          'found': dep[0],
-                          "target": dep[2] + dep[3]})
-                continue
-        elif dep[2].strip() == ">=":
-            if dep_version_int < low_check:
-                d.append({'name': dep[1],
-                          'found': dep[0],
-                          "target": dep[2] + dep[3]})
-                continue
-        elif dep[2].strip() == ">":
-            if dep_version_int <= low_check:
-                d.append({'name': dep[1],
-                          'found': dep[0],
-                          "target": dep[2] + dep[3]})
-                continue
-        if dep[4] and dep[5]:
-            if dep[4].strip() == "<":
-                if dep_version_int >= high_check:
-                    d.append(
-                        {'name': dep[1],
-                         'found': dep[0],
-                         "target": dep[4] + dep[5]})
-                    continue
-            elif dep[4].strip() == "<=":
-                if dep_version_int > high_check:
-                    d.append(
-                        {'name': dep[1],
-                         'found': dep[0],
-                         "target": dep[4] + dep[5]})
-                    continue
+        
+        installed_version = get_installed_version(name)
+        
+        if not specifier:
+            d.append({
+                'name': name,
+                'target': "any",
+                'found': installed_version
+            })
+            continue
+        
+        d.append({
+            'name': name,
+            'target': specifier,
+            'found': installed_version
+        })
+    
     return d
