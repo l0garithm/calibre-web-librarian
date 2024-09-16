@@ -40,6 +40,7 @@ from .babel import babel, get_locale
 from . import config_sql
 from . import cache_buster
 from . import ub, db
+from .plugin_manager import plugin_manager
 
 try:
     from flask_limiter import Limiter
@@ -210,6 +211,10 @@ def create_app():
     from .schedule import register_scheduled_tasks, register_startup_tasks
     register_scheduled_tasks(config.schedule_reconnect)
     register_startup_tasks()
+
+    plugin_dir = os.path.join(os.path.dirname(__file__), 'plugins')
+    plugin_manager.discover_plugins(plugin_dir)
+    plugin_manager.initialize_plugins(app)
 
     return app
 
