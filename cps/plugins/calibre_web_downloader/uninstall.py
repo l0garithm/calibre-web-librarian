@@ -1,11 +1,11 @@
 import os
-from constants import (
-    import_line,
+from .constants import (
+    main_import_line,
     main_register_line,
     config_db_file,
     config_db_new_content
 )
-from cps.plugins.calibre_web_downloader.utils.file_utils import read_file, write_file
+from cps.plugins.plugin_utils import get_file_content, apply_file_changes, insert_content
 
 def uninstall():
     try:
@@ -17,21 +17,21 @@ def uninstall():
 
 def remove_from_main_py():
     main_py_path = os.path.join(os.path.dirname(__file__), '..', '..', 'main.py')
-    content = read_file(main_py_path)
+    content = get_file_content('.', 'main.py')
 
-    content = content.replace(import_line + '\n', '')
+    content = content.replace(main_import_line + '\n', '')
     content = content.replace(main_register_line + '\n', '')
 
-    write_file(main_py_path, content)
+    apply_file_changes('.', 'main.py', content)
 
 def remove_from_config_db_html():
     config_db_path = os.path.join(os.path.dirname(__file__), '..', '..', 'templates', config_db_file)
-    content = read_file(config_db_path)
-    download_ui = read_file(os.path.join(os.path.dirname(__file__), 'templates', config_db_new_content))
+    content = get_file_content('.', config_db_file)
+    download_ui = get_file_content('.', config_db_new_content)
 
     content = content.replace(download_ui, '')
 
-    write_file(config_db_path, content)
+    apply_file_changes('.', config_db_file, content)
 
 if __name__ == "__main__":
     uninstall()

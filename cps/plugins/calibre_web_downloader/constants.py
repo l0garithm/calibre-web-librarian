@@ -8,7 +8,8 @@ config_db_old_content = '''
             </div>'''
 
 main_file = 'main.py'
-main_import_line = "from .plugins.calibre_web_downloader.download import download"
+main_category = 'main'
+main_import_line = "    from .plugins.calibre_web_downloader.download import download"
 main_import_current_line = "from .search import search"
 main_register_line = "app.register_blueprint(download)"
 main_blueprint_registration_current_line = "app.register_blueprint(search)"

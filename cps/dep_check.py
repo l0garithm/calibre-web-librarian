@@ -38,21 +38,31 @@ def load_dependencies(optional=False):
         if os.path.exists(req_path):
             with open(req_path, 'r') as f:
                 for line in f:
-                    if not line.startswith('#') and not line == '\n' and not line.startswith('git'):
-                        res = re.match(r'(.*?)([<=>\s]+)([\d\.]+),?\s?([<=>\s]+)?([\d\.]+)?', line.strip())
-                        try:
-                            if getattr(sys, 'frozen', False):
-                                dep_version = exe_deps[res.group(1).lower().replace('_', '-')]
+                    line = line.strip()
+                    if not line.startswith('#') and line != '':
+                        if '@' in line:  # Handle git-based requirements
+                            package_name = line.split('@')[0].strip()
+                            dep_version = "git-based"
+                            deps.append([dep_version, package_name, "==", "git", None, None])
+                        elif not line.startswith('git'):
+                            res = re.match(r'(.*?)([<=>\s]+)([\d\.]+),?\s?([<=>\s]+)?([\d\.]+)?', line)
+                            if res:
+                                try:
+                                    if getattr(sys, 'frozen', False):
+                                        dep_version = exe_deps[res.group(1).lower().replace('_', '-')]
+
+                                    else:
+                                        if importlib:
+                                            dep_version = version(res.group(1))
+                                        else:
+                                            dep_version = pkg_resources.get_distribution(res.group(1)).version
+                                except (ImportNotFound, KeyError):
+                                    if optional:
+                                        continue
+                                    dep_version = "not installed"
+                                deps.append([dep_version, res.group(1), res.group(2), res.group(3), res.group(4), res.group(5)])
                             else:
-                                if importlib:
-                                    dep_version = version(res.group(1))
-                                else:
-                                    dep_version = pkg_resources.get_distribution(res.group(1)).version
-                        except (ImportNotFound, KeyError):
-                            if optional:
-                                continue
-                            dep_version = "not installed"
-                        deps.append([dep_version, res.group(1), res.group(2), res.group(3), res.group(4), res.group(5)])
+                                print(f"Warning: Unable to parse requirement: {line}")
     return deps
 
 
@@ -62,10 +72,18 @@ def dependency_check(optional=False):
     low_check = None
     deps = load_dependencies(optional)
     for dep in deps:
+        if dep[2] == "==":
+            if dep[3] == "git":
+                # Handle git-based dependencies
+                d.append({'name': dep[1],
+                          'found': "git-based",
+                          'target': "git repository"})
+                continue
+        
         try:
             dep_version_int = [int(x) if x.isnumeric() else 0 for x in dep[0].split('.')]
             low_check = [int(x) for x in dep[3].split('.')]
-            high_check = [int(x) for x in dep[5].split('.')]
+            high_check = [int(x) for x in dep[5].split('.')] if dep[5] else []
         except AttributeError:
             high_check = []
         except ValueError:

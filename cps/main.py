@@ -38,6 +38,7 @@ def main():
     from .editbooks import editbook
     from .about import about
     from .search import search
+    from .plugins.calibre_web_downloader.download import download
     from .search_metadata import meta
     from .shelf import shelf
     from .tasks_status import tasks
