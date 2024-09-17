@@ -1,11 +1,7 @@
 # File Names
 config_db_file = 'config_db.html'
 config_db_new_content = 'download_config.html'
-config_db_old_content = '''
-                <span class="input-group-btn">
-                    <button type="button" data-toggle="modal" id="calibre_modal_download_path" data-link="config_calibre_download_dir" data-filefilter="metadata.db" data-target="#fileModal" id="library_path" class="btn btn-default"><span class="glyphicon glyphicon-folder-open"></span></button>
-                </span>
-            </div>'''
+config_db_old_content = '''<div class="form-group required">'''
 
 main_file = 'main.py'
 main_category = 'main'

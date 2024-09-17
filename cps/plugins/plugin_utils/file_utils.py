@@ -21,15 +21,37 @@ def apply_file_changes(file_category, filename, new_content):
     file_path = allowed_categories[file_category] / filename
     file_path.write_text(new_content)
 
-def insert_content(content, new_line, target_line, before=True):
-    lines = content.split('\n')
+# def insert_content(content, new_line, target_line, before=True):
+#     lines = content.split('\n')
     
-    for i, line in enumerate(lines):
-        if target_line in line:
+#     for i, line in enumerate(lines):
+#         if target_line in line:
+#             if before:
+#                 lines.insert(i, new_line)
+#             else:
+#                 lines.insert(i + 1, new_line)
+#             break
+    
+#     result = '\n'.join(lines)
+#     return result
+
+def insert_content(content, new_content, target_content, before=True):
+    print(f"Inserting new content: {new_content}")
+    print(f"Target content: {target_content}")
+    print(f"Inserting before: {before}")
+    
+    if new_content not in content:
+        if target_content.strip() in content.strip():
             if before:
-                lines.insert(i, new_line)
+                print(f"Inserting before target content")
+                content = content.replace(target_content.strip(), new_content + '\n' + target_content)
             else:
-                lines.insert(i + 1, new_line)
-            break
+                print(f"Inserting after target content")
+                content = content.replace(target_content, target_content + '\n' + new_content)
+        else:
+            print(f"Target content not found in the file")
+    else:
+        print(f"New content already exists in the file")
     
-    return '\n'.join(lines)
+    print(f"Content after insertion: {content}")
+    return content
