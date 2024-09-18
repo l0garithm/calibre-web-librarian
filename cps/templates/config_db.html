@@ -16,6 +16,18 @@
           <button type="button" data-toggle="modal" id="calibre_modal_path" data-link="config_calibre_dir" data-filefilter="metadata.db" data-target="#fileModal" id="library_path" class="btn btn-default"><span class="glyphicon glyphicon-folder-open"></span></button>
         </span>
       </div>
+      <label for="config_calibre_download_dir">{{ _('Location of Calibre Download Folder') }}</label>
+      <div class="form-group required input-group">
+          <input type="text" class="form-control" id="config_calibre_download_dir" name="config_calibre_download_dir" 
+                 value="{% if config.config_calibre_download_dir is not none %}{{ config.config_calibre_download_dir }}{% endif %}" 
+                 autocomplete="off">
+          <span class="input-group-btn">
+              <button type="button" data-toggle="modal" id="calibre_modal_download_path" data-link="config_calibre_download_dir" 
+                      data-target="#fileModal" class="btn btn-default">
+                  <span class="glyphicon glyphicon-folder-open"></span>
+              </button>
+          </span>
+      </div>
       <div class="form-group required">
         <input type="checkbox" id="config_calibre_split" name="config_calibre_split" data-control="split_settings" data-t ="{{ config.config_calibre_split_dir  }}" {% if config.config_calibre_split %}checked{% endif %} >
         <label for="config_calibre_split">{{_('Separate Book Files from Library')}}</label>

@@ -34,6 +34,8 @@ from urllib.parse import urlparse
 
 from flask import Blueprint, flash, redirect, url_for, abort, request, make_response, send_from_directory, g, Response
 from markupsafe import Markup
+
+from cps.config_sql import _Settings
 from .cw_login import current_user
 from flask_babel import gettext as _
 from flask_babel import get_locale, format_time, format_datetime, format_timedelta
@@ -1698,6 +1700,10 @@ def _db_configuration_update_helper():
                                            '',
                                            to_save['config_calibre_dir'],
                                            flags=re.IGNORECASE)
+    
+    config_calibre_download_dir = to_save.get('config_calibre_download_dir')
+    print(config_calibre_download_dir)
+
     db_valid = False
     try:
         db_change, db_valid = _db_simulate_change()
@@ -1708,6 +1714,7 @@ def _db_configuration_update_helper():
         ub.session.rollback()
         log.error_or_exception("Settings Database error: {}".format(e))
         _db_configuration_result(_("Oops! Database Error: %(error)s.", error=e.orig), gdrive_error)
+    
     try:
         metadata_db = os.path.join(to_save['config_calibre_dir'], "metadata.db")
         if config.config_use_google_drive and is_gdrive_ready() and not os.path.exists(metadata_db):
@@ -1744,6 +1751,11 @@ def _db_configuration_update_helper():
     config.config_calibre_split = to_save.get('config_calibre_split', 0) == "on"
     calibre_db.update_config(config)
     config.save()
+
+    if config.config_calibre_download_dir != config_calibre_download_dir:
+        config.config_calibre_download_dir = config_calibre_download_dir
+        config.update_download_dir(config_calibre_download_dir)
+
     return _db_configuration_result(None, gdrive_error)
 
 
