@@ -66,12 +66,17 @@ def download_book():
                     os.fsync(file.fileno())
             except Exception as error:
                 print(error)
-                
+        
         with open(f'./downloads/{filename}', 'a'):
             os.utime(f'./downloads/{filename}', None)
             print("Downloaded")
 
+        set_file_permissions(f'./downloads/{filename}')
+        
         return "Successful Download"
+
+def set_file_permissions(file_path):
+    os.chmod(file_path, 0o664)
 
 def getBookOptions(book, author, category):
     search = LibgenSearch(category)
