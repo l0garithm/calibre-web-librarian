@@ -5,7 +5,6 @@ import requests
 from cps import logger, render_template, config
 from cps.usermanagement import login_required_if_no_ano
 from libgen_api import LibgenSearch
-import time
 
 download = Blueprint('download', __name__)
 log = logger.create()
@@ -34,8 +33,6 @@ def search_libgen():
 
 @download.route("/download_book", methods=["POST"])
 def download_book():
-    print("Starting download process")
-   
     if request.is_json:
         data = request.get_json()
         print(data)
@@ -47,63 +44,45 @@ def download_book():
         downloadURL = download_links.get('GET')
         print(downloadURL)
 
-    try:
         with requests.get(downloadURL, stream=True) as response:
             response.raise_for_status()
             print("FIRST LAYER")
+
             titleHeader = response.headers.get('content-disposition')
             filename = getFileNameFromHeader(titleHeader)
             directory = config.config_calibre_download_dir
+
             file_path = os.path.join(directory, filename)
-            print(f"Filename: {filename}")
-            print(f"Download directory: {directory}")
-            print(f"Full file path: {file_path}")
+            print(filename)
 
             if not os.path.exists(directory):
                 os.makedirs(directory)
-                print(f"Created directory: {directory}")
-
-            print("Starting file write")
-            with open(file_path, 'wb') as file:
-                print("SECOND LAYER")
-                total_size = int(response.headers.get('content-length', 0))
-                bytes_downloaded = 0
-                start_time = time.time()
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
+            try:
+                with open(file_path, 'wb') as file:
+                    print("SECOND LAYER")
+                    for chunk in response.iter_content(chunk_size=8192):
                         file.write(chunk)
-                        bytes_downloaded += len(chunk)
-                        elapsed_time = time.time() - start_time
-                        if elapsed_time > 5:  # Log every 5 seconds
-                            print(f"Downloaded {bytes_downloaded}/{total_size} bytes")
-                            start_time = time.time()
-                print("Download loop completed")
-                file.flush()
-                os.fsync(file.fileno())
-            print("File write completed")
+                    file.flush()
+                    os.fsync(file.fileno())
+            except Exception as error:
+                print(error)
+        
+        with open(f'./downloads/{filename}', 'a'):
+            os.utime(f'./downloads/{filename}', None)
+            print("Downloaded")
 
-    except Exception as error:
-        print(f"Error during download or write: {error}")
-        return f"Download failed: {error}"
+        # Check initial permissions
+        initial_perms = oct(os.stat(f'./downloads/{filename}').st_mode)[-3:]
+        print(f"Initial permissions: {initial_perms}")
 
-    print("Download try block completed")
+        # Try to set permissions
+        set_file_permissions(f'./downloads/{filename}')
 
-    try:
-        print("Updating file timestamp")
-        with open(file_path, 'a'):
-            os.utime(file_path, None)
-        print("File timestamp updated")
-
-        print("Setting file permissions")
-        os.chmod(file_path, 0o664)
-        print(f"File permissions set to: {oct(os.stat(file_path).st_mode)[-3:]}")
-
-    except Exception as error:
-        print(f"Error in post-download operations: {error}")
-        return f"Post-download operations failed: {error}"
-
-    print("All operations completed successfully")
-    return "Successful Download"
+        # Check final permissions
+        final_perms = oct(os.stat(f'./downloads/{filename}').st_mode)[-3:]
+        print(f"Final permissions: {final_perms}")
+        
+        return "Successful Download"
 
 def set_file_permissions(file_path):
     try:
