@@ -6,6 +6,9 @@ $(document).ready(function() {
             </div>
             <div class="search-status">Searching...</div>
         </div>
+        <div id="downloadProgress" class="search-progress" style="display: none">
+            <div class="search-status">Downloading...</div>
+        </div>
     `).insertAfter('#searchFORABUNCHOFBOOKS');
 
     $('#searchFORABUNCHOFBOOKS').on('submit', function(event) {
@@ -92,6 +95,7 @@ function list_books(data) {
 }
 
 function download_book(book) {
+    $('#downloadProgress').show();
     $.ajax({
         type: 'POST',
         url: '/download_book',
@@ -100,6 +104,7 @@ function download_book(book) {
         
         success: function(data) {
             console.log(data);
+            $('#downloadProgress').hide();
         }
     });
 }
